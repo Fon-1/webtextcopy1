@@ -1,0 +1,5 @@
+beautifulsoup4==4.12.2
+streamlit==1.31.1
+pyperclip==1.8.2
+urllib3==2.2.0
+requests==2.31.0 

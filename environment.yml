@@ -1,0 +1,13 @@
+name: content_extractor
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - requests
+  - pip:
+      - beautifulsoup4
+      - streamlit
+      - pyperclip
+      - urllib3
