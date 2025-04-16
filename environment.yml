@@ -9,5 +9,4 @@ dependencies:
   - pip:
       - beautifulsoup4
       - streamlit
-      - pyperclip
       - urllib3

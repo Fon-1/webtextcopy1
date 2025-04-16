@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
-import pyperclip
 import time
 from urllib.parse import urlparse
 import logging
@@ -1831,11 +1830,13 @@ def submit_annotation():
 
 # Display content and navigation if available
 if st.session_state.content and len(st.session_state.content) > 100:
-    # Copy to clipboard
-    pyperclip.copy(st.session_state.content)
-    
-    # Success message
+    # Replace pyperclip.copy with Streamlit button
     st.success(f"✅ Đã trích xuất trong {st.session_state.execution_time:.2f} giây")
+    
+    # Add copy button
+    if st.button("📋 Sao chép vào clipboard", key="copy_btn"):
+        st.code(st.session_state.content, language=None)
+        st.toast("✅ Đã sao chép! Bạn có thể dán nội dung ở nơi khác.")
     
     # Show the content
     with st.expander(f"📖 {st.session_state.title}", expanded=True):
