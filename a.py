@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
-import pyperclip
 import time
 from urllib.parse import urlparse
 import logging
@@ -11,6 +10,14 @@ from pathlib import Path
 import uuid
 import datetime
 import urllib3
+
+# Add a simple dummy function to replace pyperclip functionality
+def dummy_copy_to_clipboard(text):
+    """
+    Dummy function that doesn't actually use clipboard
+    This replaces the pyperclip functionality 
+    """
+    pass
 
 # Import helper functions
 try:
