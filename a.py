@@ -1847,103 +1847,46 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Create a mobile-friendly copy solution
+        # EXTREMELY SIMPLIFIED copy solution - for maximum mobile compatibility
         st.markdown("""
         <style>
-        .mobile-copy-area {
+        .ultra-simple-textarea {
             width: 100%;
-            height: 120px;
-            padding: 12px;
-            margin: 10px 0;
-            border: 2px solid #4CAF50;
-            border-radius: 8px;
+            height: 150px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 3px solid #4CAF50;
+            border-radius: 10px;
             font-size: 16px;
-            font-family: inherit;
+            background-color: #f8fff8;
         }
         
-        .copy-instructions {
-            font-size: 16px;
-            padding: 10px;
-            margin: 10px 0;
-            background-color: #e8f5e9;
-            border-radius: 5px;
+        .copy-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
             color: #333;
             text-align: center;
         }
         
-        .copy-button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px 20px;
-            border: none;
+        .copy-instructions {
+            font-size: 16px;
+            margin: 10px 0 20px 0;
+            padding: 12px;
+            background-color: #e8f5e9;
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            margin: 10px 0;
-            width: 100%;
+            color: #333;
             text-align: center;
-            display: block;
         }
         </style>
+        
+        <div class="copy-title">📋 Sao chép nội dung</div>
+        <div class="copy-instructions">
+            Nhấn vào khung văn bản bên dưới → Giữ xuống và chọn "Chọn tất cả" → Chọn "Sao chép"
+        </div>
+        
+        <textarea class="ultra-simple-textarea" id="copyText" onclick="this.focus();this.select();">""" + html.escape(st.session_state.content) + """</textarea>
         """, unsafe_allow_html=True)
-        
-        # Create UI components specifically designed for mobile
-        st.markdown("<div class='copy-instructions'>👇 Sao chép bằng cách nhấn vào nút hoặc chọn văn bản trong ô bên dưới:</div>", unsafe_allow_html=True)
-        
-        # Use a simpler JavaScript implementation
-        mobile_copy_html = """
-        <textarea id="mobile-copy-area" class="mobile-copy-area" readonly onclick="this.select();">""" + html.escape(st.session_state.content) + """</textarea>
-        
-        <button class="copy-button" onclick="copyMobileText()">
-        📋 Sao chép nội dung
-        </button>
-        
-        <script>
-        function copyMobileText() {
-            var copyText = document.getElementById("mobile-copy-area");
-            copyText.select();
-            copyText.setSelectionRange(0, 999999); // For mobile devices
-            
-            try {
-                // Try Modern Clipboard API first
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(copyText.value)
-                        .then(function() {
-                            // Success!
-                            alert("Đã sao chép nội dung!");
-                        })
-                        .catch(function() {
-                            // Fallback to older method
-                            document.execCommand("copy");
-                            alert("Đã sao chép nội dung!");
-                        });
-                } else {
-                    // Fallback for older browsers
-                    var successful = document.execCommand("copy");
-                    
-                    if (successful) {
-                        alert("Đã sao chép nội dung!");
-                    } else {
-                        alert("Hãy nhấn giữ văn bản và chọn Sao chép");
-                    }
-                }
-            } catch(err) {
-                alert("Hãy nhấn giữ văn bản và chọn Sao chép");
-                console.error("Copy error:", err);
-            }
-        }
-        
-        // Auto-select all text when someone taps the textarea
-        document.addEventListener("DOMContentLoaded", function() {
-            document.getElementById("mobile-copy-area").addEventListener("focus", function() {
-                this.select();
-            });
-        });
-        </script>
-        """
-        
-        st.markdown(mobile_copy_html, unsafe_allow_html=True)
         
         # Display the content in a text area
         content_text_area = st.text_area(
