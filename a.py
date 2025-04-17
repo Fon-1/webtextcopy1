@@ -1846,7 +1846,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Add enhanced mobile-friendly copy functionality with JavaScript
+        # Add enhanced mobile-friendly copy functionality with JavaScript - completely rewritten
         st.markdown("""
         <style>
         /* Mobile-friendly copy button styles */
@@ -1863,7 +1863,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%%;
+            width: 100%;
             max-width: 300px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
@@ -1877,7 +1877,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
             color: white;
             width: 56px;
             height: 56px;
-            border-radius: 50%%;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1890,8 +1890,8 @@ if st.session_state.content and len(st.session_state.content) > 100:
         .copy-toast {
             position: fixed;
             bottom: 80px;
-            left: 50%%;
-            transform: translateX(-50%%);
+            left: 50%;
+            transform: translateX(-50%);
             background-color: #4CAF50;
             color: white;
             padding: 12px 24px;
@@ -1904,74 +1904,77 @@ if st.session_state.content and len(st.session_state.content) > 100:
         }
         </style>
         
-        <textarea id="content-for-copy" style="position: absolute; left: -9999px;">%s</textarea>
         <div id="copy-toast" class="copy-toast">✅ Đã sao chép!</div>
+        """, unsafe_allow_html=True)
         
+        # Create a button that directly uses st.write to add a button with the content embedded
+        content_for_copy = st.session_state.content.replace('\n', '\\n').replace('"', '\\"')
+        copy_js = f"""
         <script>
-        // Create floating action button for mobile
-        const floatingButton = document.createElement('div');
-        floatingButton.className = 'floating-copy-button';
-        floatingButton.innerHTML = '📋';
-        floatingButton.addEventListener('click', copyToClipboard);
-        document.body.appendChild(floatingButton);
-        
-        function copyToClipboard() {
-            const textarea = document.getElementById('content-for-copy');
-            const text = textarea.value || textarea.textContent;
+        function copyText{hash(content_for_copy)} () {{
+            // Create a temp element to hold the text
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = "{content_for_copy}";
+            document.body.appendChild(tempTextArea);
             
-            // Try modern clipboard API first (more reliable)
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text)
-                    .then(() => {
-                        showToast();
-                    })
-                    .catch(err => {
-                        console.error('Clipboard API failed:', err);
-                        // Fall back to execCommand method
-                        fallbackCopyMethod(textarea);
-                    });
-            } else {
-                // Fall back to older methods
-                fallbackCopyMethod(textarea);
-            }
-        }
-        
-        function fallbackCopyMethod(textarea) {
-            // For iOS devices
-            if (navigator.userAgent.match(/ipad|iphone/i)) {
-                const range = document.createRange();
-                range.selectNodeContents(textarea);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-                textarea.setSelectionRange(0, 999999);
-            } else {
-                textarea.select();
-            }
+            // Select and copy
+            tempTextArea.select();
+            tempTextArea.setSelectionRange(0, 99999);
             
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showToast();
-                } else {
-                    console.error('execCommand copy failed');
-                }
-            } catch (err) {
-                console.error('Unable to copy', err);
-            }
-        }
+            // Try modern clipboard API first
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(tempTextArea.value)
+                    .then(() => {{
+                        showSuccessToast();
+                    }})
+                    .catch(err => {{
+                        console.error('Clipboard API error:', err);
+                        // Fall back to document.execCommand
+                        try {{
+                            document.execCommand('copy');
+                            showSuccessToast();
+                        }} catch (e) {{
+                            console.error('Unable to copy text:', e);
+                            alert('Unable to copy. Please try again or copy manually.');
+                        }}
+                    }});
+            }} else {{
+                // Fallback for older browsers
+                try {{
+                    document.execCommand('copy');
+                    showSuccessToast();
+                }} catch (e) {{
+                    console.error('Unable to copy text:', e);
+                    alert('Unable to copy. Please try again or copy manually.');
+                }}
+            }}
+            
+            // Remove the temp element
+            document.body.removeChild(tempTextArea);
+        }}
         
-        function showToast() {
+        function showSuccessToast() {{
             const toast = document.getElementById('copy-toast');
             toast.style.opacity = '1';
-            setTimeout(() => {
+            setTimeout(() => {{
                 toast.style.opacity = '0';
-            }, 2000);
-        }
+            }}, 2000);
+        }}
+        
+        // Add floating action button
+        document.addEventListener('DOMContentLoaded', function() {{
+            const floatingButton = document.createElement('div');
+            floatingButton.className = 'floating-copy-button';
+            floatingButton.innerHTML = '📋';
+            floatingButton.addEventListener('click', copyText{hash(content_for_copy)});
+            document.body.appendChild(floatingButton);
+        }});
         </script>
         
-        <button onclick="copyToClipboard()" class="copy-button">📋 Sao chép nội dung</button>
-        """ % st.session_state.content.replace('\n', '\\n').replace('"', '\\"'), unsafe_allow_html=True)
+        <button onclick="copyText{hash(content_for_copy)}()" class="copy-button">📋 Sao chép nội dung</button>
+        """
+        
+        st.components.v1.html(copy_js, height=50, width=300)
         
         # Display the content in a text area
         content_text_area = st.text_area(
