@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
+import pyperclip
 import time
 from urllib.parse import urlparse
 import logging
@@ -10,15 +11,6 @@ from pathlib import Path
 import uuid
 import datetime
 import urllib3
-import html
-
-# Add a simple dummy function to replace pyperclip functionality
-def dummy_copy_to_clipboard(text):
-    """
-    Dummy function that doesn't actually use clipboard
-    This replaces the pyperclip functionality 
-    """
-    pass
 
 # Import helper functions
 try:
@@ -1839,6 +1831,9 @@ def submit_annotation():
 
 # Display content and navigation if available
 if st.session_state.content and len(st.session_state.content) > 100:
+    # Copy to clipboard
+    pyperclip.copy(st.session_state.content)
+    
     # Success message
     st.success(f"✅ Đã trích xuất trong {st.session_state.execution_time:.2f} giây")
     
@@ -1847,78 +1842,100 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # EXTREMELY SIMPLIFIED copy solution - for maximum mobile compatibility
-        st.markdown("""
-        <style>
-        .ultra-simple-textarea {
-            width: 100%;
-            height: 150px;
-            padding: 15px;
-            margin: 15px 0;
-            border: 3px solid #4CAF50;
-            border-radius: 10px;
-            font-size: 16px;
-            background-color: #f8fff8;
-        }
+        # Create a key for tracking content changes for scroll position
+        content_key = f"content_{hash(st.session_state.content)}"
         
-        .copy-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 20px 0 10px 0;
-            color: #333;
-            text-align: center;
-        }
+        # Display the content in a text area - height based on preferences
         
-        .copy-instructions {
-            font-size: 16px;
-            margin: 10px 0 20px 0;
-            padding: 12px;
-            background-color: #e8f5e9;
-            border-radius: 8px;
-            color: #333;
-            text-align: center;
-        }
-        </style>
+        # Create a two-column layout for content and copy button
+        content_col, button_col = st.columns([5, 1])
         
-        <div class="copy-title">📋 Sao chép nội dung</div>
-        <div class="copy-instructions">
-            Nhấn vào khung văn bản bên dưới → Giữ xuống và chọn "Chọn tất cả" → Chọn "Sao chép"
-        </div>
-        
-        <textarea class="ultra-simple-textarea" id="copyText" onclick="this.focus();this.select();">""" + html.escape(st.session_state.content) + """</textarea>
-        """, unsafe_allow_html=True)
-        
-        # Display the content in a text area
-        content_text_area = st.text_area(
-            label="Nội dung",
-            value=st.session_state.content,
-            height=int(st.session_state.preferences.get("font_size", "16px").replace("px", "")) * 25,
-            label_visibility="collapsed",
-            key=f"content_{hash(st.session_state.content)}"
-        )
-        
-        # Add a "Download as Text" button for mobile users
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="💾 Tải về dạng TXT",
-                data=st.session_state.content,
-                file_name=f"{st.session_state.title}.txt",
-                mime="text/plain"
+        with content_col:
+            content_text_area = st.text_area(
+                label="Nội dung",
+                value=st.session_state.content,
+                height=int(st.session_state.preferences.get("font_size", "16px").replace("px", "")) * 25,
+                label_visibility="collapsed",
+                key=content_key
             )
+            
+            # Update reading progress when text area is interacted with
+            if content_text_area != st.session_state.content:
+                # Assume this is a scroll or selection interaction
+                cursor_pos = len(content_text_area.split('\n', 1)[0])  # Simplistic approach, gets position of first line
+                if cursor_pos > 0:
+                    # Update reading progress
+                    update_reading_progress(
+                        st.session_state.current_url,
+                        st.session_state.title,
+                        cursor_pos,
+                        len(st.session_state.content)
+                    )
+                    st.session_state.scroll_position = cursor_pos
         
-        # Update reading progress when text area is interacted with
-        if content_text_area != st.session_state.content:
-            cursor_pos = len(content_text_area.split('\n', 1)[0])
-            if cursor_pos > 0:
-                update_reading_progress(
-                    st.session_state.current_url,
-                    st.session_state.title,
-                    cursor_pos,
-                    len(st.session_state.content)
-                )
-                st.session_state.scroll_position = cursor_pos
-
+        with button_col:
+            # Add copy button with custom styling
+            st.markdown("""
+            <style>
+            .copy-button-container {
+                display: flex;
+                height: 100%;
+                align-items: center;
+                justify-content: center;
+            }
+            .copy-button {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin: 4px 2px;
+                cursor: pointer;
+                border-radius: 4px;
+                transition: background-color 0.3s;
+                width: 100%;
+            }
+            .copy-button:hover {
+                background-color: #45a049;
+            }
+            </style>
+            
+            <div class="copy-button-container">
+                <button class="copy-button" onclick="copyContent()">
+                    📋 Sao chép
+                </button>
+            </div>
+            
+            <script>
+            function copyContent() {
+                const textArea = document.querySelector('textarea[aria-label="Nội dung"]');
+                if (textArea) {
+                    // Create a temporary textarea element to handle the copy
+                    const tempTextArea = document.createElement('textarea');
+                    tempTextArea.value = textArea.value;
+                    document.body.appendChild(tempTextArea);
+                    tempTextArea.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            alert('Đã sao chép nội dung!');
+                        } else {
+                            alert('Không thể sao chép, vui lòng thử lại.');
+                        }
+                    } catch (err) {
+                        alert('Không thể sao chép: ' + err);
+                    }
+                    
+                    document.body.removeChild(tempTextArea);
+                }
+            }
+            </script>
+            """, unsafe_allow_html=True)
+        
         # Annotation section
         st.markdown("### 🖍️ Ghi chú & đánh dấu")
         
