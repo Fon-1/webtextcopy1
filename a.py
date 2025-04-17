@@ -1917,7 +1917,26 @@ if st.session_state.content and len(st.session_state.content) > 100:
         
         function copyToClipboard() {
             const textarea = document.getElementById('content-for-copy');
+            const text = textarea.value || textarea.textContent;
             
+            // Try modern clipboard API first (more reliable)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        showToast();
+                    })
+                    .catch(err => {
+                        console.error('Clipboard API failed:', err);
+                        // Fall back to execCommand method
+                        fallbackCopyMethod(textarea);
+                    });
+            } else {
+                // Fall back to older methods
+                fallbackCopyMethod(textarea);
+            }
+        }
+        
+        function fallbackCopyMethod(textarea) {
             // For iOS devices
             if (navigator.userAgent.match(/ipad|iphone/i)) {
                 const range = document.createRange();
@@ -1932,16 +1951,13 @@ if st.session_state.content and len(st.session_state.content) > 100:
             
             try {
                 const successful = document.execCommand('copy');
-                showToast();
+                if (successful) {
+                    showToast();
+                } else {
+                    console.error('execCommand copy failed');
+                }
             } catch (err) {
                 console.error('Unable to copy', err);
-                
-                // Try alternate method for modern browsers
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(textarea.value)
-                        .then(() => showToast())
-                        .catch(err => console.error('Clipboard API failed:', err));
-                }
             }
         }
         
