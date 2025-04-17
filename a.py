@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
+import pyperclip
 import time
 from urllib.parse import urlparse
 import logging
@@ -1830,37 +1831,148 @@ def submit_annotation():
 
 # Display content and navigation if available
 if st.session_state.content and len(st.session_state.content) > 100:
-    # Replace pyperclip.copy with Streamlit button
+    # Success message
     st.success(f"✅ Đã trích xuất trong {st.session_state.execution_time:.2f} giây")
-    
-    # Add copy button
-    if st.button("📋 Sao chép vào clipboard", key="copy_btn"):
-        st.code(st.session_state.content, language=None)
-        st.toast("✅ Đã sao chép! Bạn có thể dán nội dung ở nơi khác.")
     
     # Show the content
     with st.expander(f"📖 {st.session_state.title}", expanded=True):
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Create a key for tracking content changes for scroll position
-        content_key = f"content_{hash(st.session_state.content)}"
+        # Add enhanced mobile-friendly copy functionality with JavaScript
+        st.markdown("""
+        <style>
+        /* Mobile-friendly copy button styles */
+        .copy-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%%;
+            max-width: 300px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
         
-        # Display the content in a text area - height based on preferences
+        /* Floating action button for mobile */
+        .floating-copy-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4CAF50;
+            color: white;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 9999;
+            font-size: 24px;
+        }
+        
+        /* Success toast notification */
+        .copy-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%%;
+            transform: translateX(-50%%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        </style>
+        
+        <textarea id="content-for-copy" style="position: absolute; left: -9999px;">%s</textarea>
+        <div id="copy-toast" class="copy-toast">✅ Đã sao chép!</div>
+        
+        <script>
+        // Create floating action button for mobile
+        const floatingButton = document.createElement('div');
+        floatingButton.className = 'floating-copy-button';
+        floatingButton.innerHTML = '📋';
+        floatingButton.addEventListener('click', copyToClipboard);
+        document.body.appendChild(floatingButton);
+        
+        function copyToClipboard() {
+            const textarea = document.getElementById('content-for-copy');
+            
+            // For iOS devices
+            if (navigator.userAgent.match(/ipad|iphone/i)) {
+                const range = document.createRange();
+                range.selectNodeContents(textarea);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                textarea.setSelectionRange(0, 999999);
+            } else {
+                textarea.select();
+            }
+            
+            try {
+                const successful = document.execCommand('copy');
+                showToast();
+            } catch (err) {
+                console.error('Unable to copy', err);
+                
+                // Try alternate method for modern browsers
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(textarea.value)
+                        .then(() => showToast())
+                        .catch(err => console.error('Clipboard API failed:', err));
+                }
+            }
+        }
+        
+        function showToast() {
+            const toast = document.getElementById('copy-toast');
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+        </script>
+        
+        <button onclick="copyToClipboard()" class="copy-button">📋 Sao chép nội dung</button>
+        """ % st.session_state.content.replace('\n', '\\n').replace('"', '\\"'), unsafe_allow_html=True)
+        
+        # Display the content in a text area
         content_text_area = st.text_area(
             label="Nội dung",
             value=st.session_state.content,
             height=int(st.session_state.preferences.get("font_size", "16px").replace("px", "")) * 25,
             label_visibility="collapsed",
-            key=content_key
+            key=f"content_{hash(st.session_state.content)}"
         )
+        
+        # Add a "Download as Text" button for mobile users
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="💾 Tải về dạng TXT",
+                data=st.session_state.content,
+                file_name=f"{st.session_state.title}.txt",
+                mime="text/plain"
+            )
         
         # Update reading progress when text area is interacted with
         if content_text_area != st.session_state.content:
-            # Assume this is a scroll or selection interaction
-            cursor_pos = len(content_text_area.split('\n', 1)[0])  # Simplistic approach, gets position of first line
+            cursor_pos = len(content_text_area.split('\n', 1)[0])
             if cursor_pos > 0:
-                # Update reading progress
                 update_reading_progress(
                     st.session_state.current_url,
                     st.session_state.title,
@@ -1868,7 +1980,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
                     len(st.session_state.content)
                 )
                 st.session_state.scroll_position = cursor_pos
-        
+
         # Annotation section
         st.markdown("### 🖍️ Ghi chú & đánh dấu")
         
