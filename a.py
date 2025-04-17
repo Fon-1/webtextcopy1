@@ -1847,52 +1847,103 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Create a simpler copy button that works reliably
+        # Create a mobile-friendly copy solution
         st.markdown("""
         <style>
+        .mobile-copy-area {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        
+        .copy-instructions {
+            font-size: 16px;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #e8f5e9;
+            border-radius: 5px;
+            color: #333;
+            text-align: center;
+        }
+        
         .copy-button {
             background-color: #4CAF50;
             color: white;
-            padding: 12px 24px;
+            padding: 15px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 18px;
             font-weight: bold;
-            margin: 15px 0;
+            margin: 10px 0;
             width: 100%;
+            text-align: center;
+            display: block;
         }
         </style>
         """, unsafe_allow_html=True)
         
-        # Create a container for the copy functionality
-        copy_container = st.container()
+        # Create UI components specifically designed for mobile
+        st.markdown("<div class='copy-instructions'>👇 Sao chép bằng cách nhấn vào nút hoặc chọn văn bản trong ô bên dưới:</div>", unsafe_allow_html=True)
         
-        # Create a text area with the content that can be manually copied
-        copy_container.text_area(
-            "Sao chép nội dung (chọn tất cả văn bản và bấm Ctrl+C hoặc Command+C)",
-            value=st.session_state.content,
-            height=150,
-            key="copy_area"
-        )
+        # Use a simpler JavaScript implementation
+        mobile_copy_html = """
+        <textarea id="mobile-copy-area" class="mobile-copy-area" readonly onclick="this.select();">""" + html.escape(st.session_state.content) + """</textarea>
         
-        # Add a helper button that tries to use clipboard API
-        content_for_js = st.session_state.content.replace('\\', '\\\\').replace('`', '\\`').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
-        
-        copy_button_html = """
-        <button 
-            class="copy-button"
-            onclick="
-                navigator.clipboard.writeText('" + content_for_js + "')
-                .then(() => alert('Đã sao chép nội dung!'))
-                .catch(() => alert('Không thể sao chép tự động. Vui lòng chọn toàn bộ văn bản và bấm Ctrl+C (hoặc Command+C).'))
-            "
-        >
+        <button class="copy-button" onclick="copyMobileText()">
         📋 Sao chép nội dung
         </button>
+        
+        <script>
+        function copyMobileText() {
+            var copyText = document.getElementById("mobile-copy-area");
+            copyText.select();
+            copyText.setSelectionRange(0, 999999); // For mobile devices
+            
+            try {
+                // Try Modern Clipboard API first
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(copyText.value)
+                        .then(function() {
+                            // Success!
+                            alert("Đã sao chép nội dung!");
+                        })
+                        .catch(function() {
+                            // Fallback to older method
+                            document.execCommand("copy");
+                            alert("Đã sao chép nội dung!");
+                        });
+                } else {
+                    // Fallback for older browsers
+                    var successful = document.execCommand("copy");
+                    
+                    if (successful) {
+                        alert("Đã sao chép nội dung!");
+                    } else {
+                        alert("Hãy nhấn giữ văn bản và chọn Sao chép");
+                    }
+                }
+            } catch(err) {
+                alert("Hãy nhấn giữ văn bản và chọn Sao chép");
+                console.error("Copy error:", err);
+            }
+        }
+        
+        // Auto-select all text when someone taps the textarea
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("mobile-copy-area").addEventListener("focus", function() {
+                this.select();
+            });
+        });
+        </script>
         """
         
-        st.markdown(copy_button_html, unsafe_allow_html=True)
+        st.markdown(mobile_copy_html, unsafe_allow_html=True)
         
         # Display the content in a text area
         content_text_area = st.text_area(
