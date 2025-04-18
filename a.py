@@ -1901,17 +1901,39 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Display the content in a text area for copy
-        st.text_area("", st.session_state.content, height=400, key=f"content_{hash(st.session_state.content)}")
+        # Display the content in a text area for copying
+        content_text_area = st.text_area("", st.session_state.content, height=400, key=f"content_{hash(st.session_state.content)}")
         
-        # Use a simple copy button with pyperclip instead of JavaScript
+        # Use a simple copy button with multiple fallback methods
         if st.button("📋 SAO CHÉP NỘI DUNG", key="copy_button"):
             try:
-                # Use pyperclip for copying (works on most platforms)
+                # Try pyperclip first (works on desktop)
+                import pyperclip
                 pyperclip.copy(st.session_state.content)
                 st.success("✅ Đã sao chép nội dung!")
             except Exception as e:
-                st.warning(f"Không thể sao chép. Hãy thử chọn văn bản và sao chép thủ công (Ctrl+C/Cmd+C).")
+                # If pyperclip fails, provide a JavaScript fallback that might work on more devices
+                st.markdown(
+                    f"""
+                    <textarea id="hidden-textarea" style="position: absolute; left: -9999px;">{st.session_state.content}</textarea>
+                    <script>
+                        try {{
+                            const textarea = document.getElementById('hidden-textarea');
+                            textarea.select();
+                            const successful = document.execCommand('copy');
+                            if (successful) {{
+                                // Success message will be shown by the button below
+                            }} else {{
+                                console.error('Copy command failed');
+                            }}
+                        }} catch (err) {{
+                            console.error('Fallback copy failed:', err);
+                        }}
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.warning("👉 Vui lòng chọn nội dung trong khung văn bản và nhấn Ctrl+C (hoặc Cmd+C) để sao chép thủ công.")
         
         # Add a "Download as Text" button for mobile users
         col1, col2 = st.columns(2)
