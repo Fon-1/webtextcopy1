@@ -1845,10 +1845,16 @@ if st.session_state.content and len(st.session_state.content) > 100:
         annotations = get_annotations(st.session_state.current_url)
         
         # Add enhanced mobile-friendly copy functionality with JavaScript
-        st.markdown("""
+        st.markdown(f"""
         <style>
-        /* Mobile-friendly copy button styles */
-        .copy-button {
+        /* Simple copy button styles */
+        .simple-copy-area {{
+            position: absolute;
+            left: -9999px;
+            readonly: true;
+        }}
+        
+        .simple-copy-button {{
             background-color: #4CAF50;
             color: white;
             padding: 12px 20px;
@@ -1858,38 +1864,18 @@ if st.session_state.content and len(st.session_state.content) > 100:
             margin: 10px 0;
             font-size: 16px;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%%;
+            text-align: center;
+            width: 100%;
             max-width: 300px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        /* Floating action button for mobile */
-        .floating-copy-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #4CAF50;
-            color: white;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            z-index: 9999;
-            font-size: 24px;
-        }
+        }}
         
         /* Success toast notification */
-        .copy-toast {
+        .copy-toast {{
             position: fixed;
             bottom: 80px;
-            left: 50%%;
-            transform: translateX(-50%%);
+            left: 50%;
+            transform: translateX(-50%);
             background-color: #4CAF50;
             color: white;
             padding: 12px 24px;
@@ -1899,83 +1885,75 @@ if st.session_state.content and len(st.session_state.content) > 100:
             font-weight: bold;
             opacity: 0;
             transition: opacity 0.3s ease;
-        }
+        }}
         </style>
         
-        <textarea id="content-for-copy" style="position: absolute; left: -9999px;">%s</textarea>
-        <div id="copy-toast" class="copy-toast">✅ Đã sao chép!</div>
-        <div class="copy-button" id="copy-button">📋 Sao chép nội dung</div>
+        <textarea id="copyContent" class="simple-copy-area"></textarea>
+        <div id="copyToast" class="copy-toast">✅ Đã sao chép!</div>
+        
+        <button id="copyButton" class="simple-copy-button">
+            📋 SAO CHÉP NỘI DUNG
+        </button>
         
         <script>
-        // Fix for React compatibility - use window.onload to wait for DOM to be ready
-        window.addEventListener('DOMContentLoaded', (event) => {
-            // Create floating action button for mobile - with React safe implementation
-            setTimeout(function() {
-                if (!document.querySelector('.floating-copy-button')) {
-                    const floatingButton = document.createElement('div');
-                    floatingButton.className = 'floating-copy-button';
-                    floatingButton.innerHTML = '📋';
-                    floatingButton.id = 'floating-copy-button';
-                    document.body.appendChild(floatingButton);
-                    
-                    // Add event listeners after elements are in the DOM
-                    document.getElementById('floating-copy-button').addEventListener('click', function() {
-                        copyContentToClipboard();
-                    });
-                    
-                    document.getElementById('copy-button').addEventListener('click', function() {
-                        copyContentToClipboard();
-                    });
-                }
-            }, 1000); // Small delay to ensure DOM is ready
-        });
-        
-        function copyContentToClipboard() {
-            const textarea = document.getElementById('content-for-copy');
-            
-            if (!textarea) {
-                console.error('Copy textarea not found');
-                return;
-            }
-            
-            // For iOS devices
-            if (navigator.userAgent.match(/ipad|iphone/i)) {
-                const range = document.createRange();
-                range.selectNodeContents(textarea);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-                textarea.setSelectionRange(0, 999999);
-            } else {
-                textarea.select();
-            }
-            
-            try {
-                const successful = document.execCommand('copy');
-                showCopyToast();
-            } catch (err) {
-                console.error('Unable to copy using execCommand', err);
+        // Wait for the DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {{
+            // Setup copy functionality after a short delay
+            setTimeout(function() {{
+                // Get the content to copy
+                const content = {json.dumps(st.session_state.content)};
                 
-                // Try alternate method for modern browsers
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(textarea.value)
-                        .then(() => showCopyToast())
-                        .catch(err => console.error('Clipboard API failed:', err));
-                }
-            }
-        }
+                // Setup the button click handler
+                const copyButton = document.getElementById('copyButton');
+                if (copyButton) {{
+                    copyButton.addEventListener('click', function() {{
+                        // Get the textarea
+                        const copyArea = document.getElementById('copyContent');
+                        if (copyArea) {{
+                            // Set the content
+                            copyArea.value = content;
+                            copyArea.style.display = 'block';
+                            copyArea.select();
+                            
+                            try {{
+                                // Try the standard copy command
+                                document.execCommand('copy');
+                                showToast();
+                            }} catch (err) {{
+                                console.error('execCommand copy failed', err);
+                                
+                                // Fallback to clipboard API
+                                if (navigator.clipboard) {{
+                                    navigator.clipboard.writeText(content)
+                                        .then(function() {{
+                                            showToast();
+                                        }})
+                                        .catch(function(err) {{
+                                            console.error('Clipboard API failed', err);
+                                            alert('Không thể sao chép nội dung. Hãy thử lại.');
+                                        }});
+                                }}
+                            }}
+                            
+                            // Hide the textarea again
+                            copyArea.style.display = 'none';
+                        }}
+                    }});
+                }}
+            }}, 1000);
+        }});
         
-        function showCopyToast() {
-            const toast = document.getElementById('copy-toast');
-            if (toast) {
+        function showToast() {{
+            const toast = document.getElementById('copyToast');
+            if (toast) {{
                 toast.style.opacity = '1';
-                setTimeout(() => {
+                setTimeout(function() {{
                     toast.style.opacity = '0';
-                }, 2000);
-            }
-        }
+                }}, 2000);
+            }}
+        }}
         </script>
-        """ % st.session_state.content.replace('\n', '\\n').replace('"', '\\"'), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
         
         # Display the content in a text area
         content_text_area = st.text_area(
