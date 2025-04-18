@@ -1904,47 +1904,138 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Display the content in a text area for copying
         content_text_area = st.text_area("", st.session_state.content, height=400, key=f"content_{hash(st.session_state.content)}")
         
-        # Use a simple copy button with multiple fallback methods
-        if st.button("📋 SAO CHÉP NỘI DUNG", key="copy_button"):
-            try:
-                # Try pyperclip first (works on desktop)
-                import pyperclip
-                pyperclip.copy(st.session_state.content)
-                st.success("✅ Đã sao chép nội dung!")
-            except Exception as e:
-                # If pyperclip fails, provide a JavaScript fallback that might work on more devices
-                st.markdown(
-                    f"""
-                    <textarea id="hidden-textarea" style="position: absolute; left: -9999px;">{st.session_state.content}</textarea>
-                    <script>
+        # Provide both native and JavaScript copy options for better mobile compatibility
+        col1, col2 = st.columns([1, 2])
+
+        with col1:
+            # Native Streamlit button using pyperclip (works on desktop)
+            if st.button("📋 SAO CHÉP NỘI DUNG", key="copy_button"):
+                try:
+                    import pyperclip
+                    pyperclip.copy(st.session_state.content)
+                    st.success("✅ Đã sao chép nội dung!")
+                except Exception as e:
+                    st.warning("👉 Hãy dùng nút bên phải để sao chép trên thiết bị di động.")
+
+        with col2:
+            # JavaScript-based copy solution optimized for mobile
+            st.markdown(
+                f"""
+                <style>
+                .mobile-copy-btn {{
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 10px 15px;
+                    text-align: center;
+                    text-decoration: none;
+                    display: inline-block;
+                    font-size: 16px;
+                    margin: 4px 2px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    width: 100%;
+                    touch-action: manipulation;
+                }}
+                .copy-msg-mobile {{
+                    color: #4CAF50;
+                    margin-top: 5px;
+                    display: none;
+                    text-align: center;
+                }}
+                </style>
+                
+                <button onclick="copyMobileContent()" class="mobile-copy-btn">📱 SAO CHÉP CHO THIẾT BỊ DI ĐỘNG</button>
+                <div id="copyMsgMobile" class="copy-msg-mobile">✅ Đã sao chép nội dung!</div>
+                
+                <script>
+                function copyMobileContent() {{
+                    // Create content to copy - avoid escaping issues by creating element directly
+                    const textArea = document.createElement('textarea');
+                    textArea.value = {json.dumps(st.session_state.content)};
+                    
+                    // Style for iOS compatibility
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '0';
+                    textArea.style.top = '0';
+                    textArea.style.opacity = '0';
+                    textArea.style.width = '100%';
+                    textArea.style.height = '100%';
+                    textArea.style.zIndex = '-1';
+                    textArea.setAttribute('readonly', '');
+                    
+                    // For iOS
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    if (isIOS) {{
+                        textArea.contentEditable = true;
+                        textArea.readOnly = false;
+                    }}
+                    
+                    document.body.appendChild(textArea);
+                    
+                    // Focus and select the text
+                    textArea.focus();
+                    textArea.select();
+                    
+                    // For iOS
+                    if (isIOS) {{
+                        const range = document.createRange();
+                        range.selectNodeContents(textArea);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        textArea.setSelectionRange(0, 999999);
+                    }}
+                    
+                    // Try modern clipboard API first
+                    let copied = false;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
                         try {{
-                            const textarea = document.getElementById('hidden-textarea');
-                            textarea.select();
+                            navigator.clipboard.writeText(textArea.value)
+                            .then(() => {{
+                                showCopySuccessMobile();
+                                copied = true;
+                            }})
+                            .catch(err => {{
+                                console.error('Clipboard API error:', err);
+                                // Fallback will execute
+                            }});
+                        }} catch (e) {{
+                            console.error('Clipboard API error:', e);
+                            // Fallback will execute
+                        }}
+                    }}
+                    
+                    // Fallback to execCommand
+                    if (!copied) {{
+                        try {{
                             const successful = document.execCommand('copy');
                             if (successful) {{
-                                // Success message will be shown by the button below
-                            }} else {{
-                                console.error('Copy command failed');
+                                showCopySuccessMobile();
                             }}
                         }} catch (err) {{
-                            console.error('Fallback copy failed:', err);
+                            console.error('execCommand failed:', err);
                         }}
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
-                st.warning("👉 Vui lòng chọn nội dung trong khung văn bản và nhấn Ctrl+C (hoặc Cmd+C) để sao chép thủ công.")
-        
-        # Add a "Download as Text" button for mobile users
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="💾 Tải về dạng TXT",
-                data=st.session_state.content,
-                file_name=f"{st.session_state.title}.txt",
-                mime="text/plain"
+                    }}
+                    
+                    // Cleanup
+                    document.body.removeChild(textArea);
+                }}
+                
+                function showCopySuccessMobile() {{
+                    const msg = document.getElementById('copyMsgMobile');
+                    if (msg) {{
+                        msg.style.display = 'block';
+                        setTimeout(() => {{
+                            msg.style.display = 'none';
+                        }}, 2000);
+                    }}
+                }}
+                </script>
+                """,
+                unsafe_allow_html=True
             )
-        
+
         # Update reading progress when text area is interacted with
         if content_text_area != st.session_state.content:
             cursor_pos = len(content_text_area.split('\n', 1)[0])
