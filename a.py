@@ -1926,111 +1926,188 @@ if st.session_state.content and len(st.session_state.content) > 100:
                     background-color: #4CAF50;
                     color: white;
                     border: none;
-                    padding: 10px 15px;
+                    padding: 15px 20px;
                     text-align: center;
                     text-decoration: none;
-                    display: inline-block;
-                    font-size: 16px;
-                    margin: 4px 2px;
+                    display: block;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin: 0 auto;
                     cursor: pointer;
-                    border-radius: 4px;
+                    border-radius: 8px;
                     width: 100%;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    transition: all 0.3s;
+                    position: relative;
+                    overflow: hidden;
                     touch-action: manipulation;
+                }}
+                .mobile-copy-btn:active {{
+                    background-color: #3e8e41;
+                    transform: translateY(2px);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }}
                 .copy-msg-mobile {{
                     color: #4CAF50;
-                    margin-top: 5px;
+                    margin-top: 10px;
                     display: none;
                     text-align: center;
+                    font-weight: bold;
+                }}
+                #temp-area {{
+                    position: fixed;
+                    left: -9999px;
+                    top: 0;
+                    height: 0;
+                    opacity: 0;
+                    zIndex: -1;
                 }}
                 </style>
                 
-                <button onclick="copyMobileContent()" class="mobile-copy-btn">📱 SAO CHÉP CHO THIẾT BỊ DI ĐỘNG</button>
+                <button id="mobileCopyBtn" class="mobile-copy-btn">📋 SAO CHÉP CHO THIẾT BỊ DI ĐỘNG</button>
                 <div id="copyMsgMobile" class="copy-msg-mobile">✅ Đã sao chép nội dung!</div>
+                <textarea id="temp-area" readonly></textarea>
                 
                 <script>
-                function copyMobileContent() {{
-                    // Create content to copy - avoid escaping issues by creating element directly
-                    const textArea = document.createElement('textarea');
-                    textArea.value = {json.dumps(st.session_state.content)};
+                // Wait for DOM to be ready
+                document.addEventListener('DOMContentLoaded', function() {{
+                    // Get our elements
+                    const copyBtn = document.getElementById('mobileCopyBtn');
+                    const copyMsg = document.getElementById('copyMsgMobile');
+                    const tempArea = document.getElementById('temp-area');
                     
-                    // Style for iOS compatibility
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '0';
-                    textArea.style.top = '0';
-                    textArea.style.opacity = '0';
-                    textArea.style.width = '100%';
-                    textArea.style.height = '100%';
-                    textArea.style.zIndex = '-1';
-                    textArea.setAttribute('readonly', '');
-                    
-                    // For iOS
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    if (isIOS) {{
-                        textArea.contentEditable = true;
-                        textArea.readOnly = false;
+                    // Set the content value to the temporary area
+                    if (tempArea) {{
+                        tempArea.value = {json.dumps(st.session_state.content)};
                     }}
                     
-                    document.body.appendChild(textArea);
-                    
-                    // Focus and select the text
-                    textArea.focus();
-                    textArea.select();
-                    
-                    // For iOS
-                    if (isIOS) {{
-                        const range = document.createRange();
-                        range.selectNodeContents(textArea);
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                        textArea.setSelectionRange(0, 999999);
+                    // Add click event to button
+                    if (copyBtn) {{
+                        copyBtn.addEventListener('click', function() {{
+                            // Visual feedback
+                            copyBtn.style.backgroundColor = '#3e8e41';
+                            setTimeout(() => {{ copyBtn.style.backgroundColor = '#4CAF50'; }}, 200);
+                            
+                            // Try to copy
+                            copyToClipboard({json.dumps(st.session_state.content)});
+                        }});
                     }}
                     
-                    // Try modern clipboard API first
-                    let copied = false;
-                    if (navigator.clipboard && navigator.clipboard.writeText) {{
-                        try {{
-                            navigator.clipboard.writeText(textArea.value)
-                            .then(() => {{
-                                showCopySuccessMobile();
-                                copied = true;
-                            }})
-                            .catch(err => {{
-                                console.error('Clipboard API error:', err);
-                                // Fallback will execute
-                            }});
-                        }} catch (e) {{
-                            console.error('Clipboard API error:', e);
-                            // Fallback will execute
+                    function copyToClipboard(text) {{
+                        // Try the Clipboard API first (most modern browsers)
+                        if (navigator.clipboard && navigator.clipboard.writeText) {{
+                            navigator.clipboard.writeText(text)
+                                .then(() => {{
+                                    showSuccessMessage();
+                                }})
+                                .catch(err => {{
+                                    console.error('Clipboard API failed:', err);
+                                    fallbackCopy(text);
+                                }});
+                        }} else {{
+                            fallbackCopy(text);
                         }}
                     }}
                     
-                    // Fallback to execCommand
-                    if (!copied) {{
-                        try {{
-                            const successful = document.execCommand('copy');
-                            if (successful) {{
-                                showCopySuccessMobile();
+                    function fallbackCopy(text) {{
+                        // Detect Android
+                        const isAndroid = /Android/.test(navigator.userAgent);
+                        
+                        // For Android devices
+                        if (isAndroid) {{
+                            try {{
+                                // Use the pre-created textarea but make it visible
+                                tempArea.style.position = 'fixed';
+                                tempArea.style.left = '0';
+                                tempArea.style.top = '0';
+                                tempArea.style.opacity = '1';
+                                tempArea.style.height = '50%';
+                                tempArea.style.width = '100%';
+                                tempArea.style.zIndex = '999999';
+                                tempArea.focus();
+                                tempArea.select();
+                                
+                                // Try to copy
+                                const successful = document.execCommand('copy');
+                                
+                                // Hide the area again
+                                setTimeout(() => {{
+                                    tempArea.style.position = 'fixed';
+                                    tempArea.style.left = '-9999px';
+                                    tempArea.style.top = '0';
+                                    tempArea.style.opacity = '0';
+                                    tempArea.style.height = '0';
+                                    tempArea.style.zIndex = '-1';
+                                }}, 100);
+                                
+                                if (successful) {{
+                                    showSuccessMessage();
+                                }}
+                            }} catch (err) {{
+                                console.error('Android copy failed:', err);
                             }}
-                        }} catch (err) {{
-                            console.error('execCommand failed:', err);
+                        }} else {{
+                            // For other devices
+                            try {{
+                                // Create a new temporary textarea
+                                const textarea = document.createElement('textarea');
+                                textarea.value = text;
+                                
+                                // Set style
+                                textarea.style.position = 'fixed';
+                                textarea.style.opacity = '0';
+                                textarea.style.width = '1px';
+                                textarea.style.height = '1px';
+                                textarea.style.padding = '0';
+                                textarea.style.border = 'none';
+                                textarea.style.left = '0';
+                                textarea.style.top = '0';
+                                
+                                // For iOS
+                                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                                if (isIOS) {{
+                                    textarea.contentEditable = true;
+                                    textarea.readOnly = false;
+                                }}
+                                
+                                // Add to DOM
+                                document.body.appendChild(textarea);
+                                
+                                // Select text
+                                textarea.focus();
+                                textarea.select();
+                                
+                                // iOS handling
+                                if (isIOS) {{
+                                    const range = document.createRange();
+                                    range.selectNodeContents(textarea);
+                                    const selection = window.getSelection();
+                                    selection.removeAllRanges();
+                                    selection.addRange(range);
+                                    textarea.setSelectionRange(0, 999999);
+                                }}
+                                
+                                // Try to copy
+                                const successful = document.execCommand('copy');
+                                if (successful) {{
+                                    showSuccessMessage();
+                                }}
+                                
+                                // Clean up
+                                document.body.removeChild(textarea);
+                            }} catch (err) {{
+                                console.error('Fallback copy failed:', err);
+                            }}
                         }}
                     }}
                     
-                    // Cleanup
-                    document.body.removeChild(textArea);
-                }}
-                
-                function showCopySuccessMobile() {{
-                    const msg = document.getElementById('copyMsgMobile');
-                    if (msg) {{
-                        msg.style.display = 'block';
+                    function showSuccessMessage() {{
+                        copyMsg.style.display = 'block';
                         setTimeout(() => {{
-                            msg.style.display = 'none';
+                            copyMsg.style.display = 'none';
                         }}, 2000);
                     }}
-                }}
+                }});
                 </script>
                 """,
                 unsafe_allow_html=True
