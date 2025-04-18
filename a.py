@@ -1845,219 +1845,70 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Create a key for tracking content changes for scroll position
         content_key = f"content_{hash(st.session_state.content)}"
         
-        # Tạo bản sao nội dung an toàn cho JavaScript
-        import json
-        import html
+        # Hiển thị nút sao chép đơn giản nhất có thể
+        st.markdown("""
+        <style>
+        .simple-copy-button {
+            display: block;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px auto;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
         
-        # Hiển thị nút sao chép lớn ở đầu trang - vị trí rõ ràng cho người dùng di động
-        st.markdown(
-            f"""
-            <style>
-            .mobile-copy-button {{
-                display: block;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 12px;
-                padding: 20px;
-                font-size: 20px;
-                font-weight: bold;
-                margin: 20px auto;
-                cursor: pointer;
-                width: 100%;
-                text-align: center;
-                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-                transition: all 0.3s ease;
-            }}
+        .simple-copy-area {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            font-size: 16px;
+            display: none;
+        }
+        
+        .copy-instructions {
+            margin: 15px auto;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border-left: 5px solid #4CAF50;
+            border-radius: 5px;
+        }
+        </style>
+        
+        <div class="copy-instructions">
+            <b>👇 Để sao chép nội dung:</b> Nhấn nút bên dưới, sau đó chọn tất cả và nhấn nút sao chép trên bàn phím của bạn.
+        </div>
+        
+        <textarea id="copyContent" class="simple-copy-area" readonly></textarea>
+        
+        <button onclick="showCopyArea()" class="simple-copy-button">
+            📋 SAO CHÉP NỘI DUNG
+        </button>
+        
+        <script>
+        function showCopyArea() {
+            // Lấy nội dung trực tiếp từ st.session_state.content
+            var copyArea = document.getElementById('copyContent');
+            copyArea.value = `""" + html.escape(st.session_state.content) + """`;
+            copyArea.style.display = 'block';
             
-            .mobile-copy-button:active {{
-                transform: translateY(4px);
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }}
+            // Chọn toàn bộ nội dung
+            copyArea.focus();
+            copyArea.select();
             
-            .mobile-copy-success {{
-                color: #4CAF50;
-                font-weight: bold;
-                padding: 15px;
-                margin: 15px 0;
-                text-align: center;
-                background-color: #f1f8e9;
-                border-radius: 8px;
-                display: none;
-                border-left: 5px solid #4CAF50;
-            }}
-            
-            .copy-instructions {{
-                background-color: #fff8e1;
-                border-left: 5px solid #ffc107;
-                padding: 15px;
-                margin: 15px 0;
-                display: none;
-            }}
-            
-            @media (max-width: 768px) {{
-                .mobile-copy-button {{
-                    padding: 25px;
-                    font-size: 22px;
-                    border-radius: 15px;
-                }}
-            }}
-            </style>
-            
-            <div id="copySuccessMessage" class="mobile-copy-success">
-                ✅ Đã sao chép nội dung thành công!
-            </div>
-            
-            <div id="copyInstructions" class="copy-instructions">
-                ⚠️ Không thể tự động sao chép trên thiết bị của bạn. Hãy chọn toàn bộ nội dung và sao chép thủ công.
-            </div>
-            
-            <button id="mobileCopyButton" class="mobile-copy-button" onclick="copyToClipboardMobile()">
-                📋 NHẤN VÀO ĐÂY ĐỂ SAO CHÉP NỘI DUNG
-            </button>
-            
-            <textarea id="contentToCopy" style="position:absolute;left:-9999px;opacity:0;">{html.escape(st.session_state.content)}</textarea>
-            
-            <script>
-                // Kiểm tra môi trường
-                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                
-                // Hàm sao chép chính - tối ưu hóa cho các nền tảng khác nhau
-                function copyToClipboardMobile() {{
-                    // Lấy nội dung từ textarea ẩn - cách an toàn nhất
-                    const textarea = document.getElementById('contentToCopy');
-                    const content = textarea.value;
-                    
-                    // Trường hợp đặc biệt cho iOS
-                    if (isIOS) {{
-                        // Làm cho textarea hiển thị tạm thời
-                        textarea.style.position = 'fixed';
-                        textarea.style.top = '0';
-                        textarea.style.left = '0';
-                        textarea.style.width = '100%';
-                        textarea.style.height = '50%';
-                        textarea.style.opacity = '1';
-                        textarea.style.zIndex = '9999';
-                        
-                        // Focus và select text
-                        textarea.focus();
-                        textarea.select();
-                        
-                        // Hướng dẫn người dùng iOS
-                        alert('Đã chọn nội dung. Nhấn vào nút "Sao chép" trên bàn phím để sao chép.');
-                        
-                        // Chờ người dùng sao chép xong
-                        textarea.addEventListener('blur', function onBlur() {{
-                            // Ẩn textarea
-                            textarea.style.position = 'absolute';
-                            textarea.style.left = '-9999px';
-                            textarea.style.opacity = '0';
-                            textarea.style.zIndex = 'auto';
-                            
-                            // Xóa event listener
-                            textarea.removeEventListener('blur', onBlur);
-                        }});
-                        
-                        return;
-                    }}
-                    
-                    // Phương pháp Clipboard API hiện đại
-                    if (navigator.clipboard && window.isSecureContext) {{
-                        navigator.clipboard.writeText(content)
-                            .then(() => {{
-                                showCopySuccess();
-                            }})
-                            .catch(err => {{
-                                console.error("Clipboard API error:", err);
-                                fallbackCopyMethod();
-                            }});
-                    }} else {{
-                        fallbackCopyMethod();
-                    }}
-                }}
-                
-                // Phương pháp sao chép dự phòng
-                function fallbackCopyMethod() {{
-                    try {{
-                        // Phương pháp cũ cho các trình duyệt khác
-                        const textarea = document.getElementById('contentToCopy');
-                        
-                        // Di chuyển textarea vào viewport tạm thời
-                        textarea.style.position = 'fixed';
-                        textarea.style.top = '0';
-                        textarea.style.left = '0';
-                        textarea.style.width = '2em';
-                        textarea.style.height = '2em';
-                        textarea.style.opacity = '0';
-                        
-                        textarea.focus();
-                        textarea.select();
-                        
-                        var successful = document.execCommand('copy');
-                        
-                        // Phục hồi vị trí textarea
-                        textarea.style.position = 'absolute';
-                        textarea.style.left = '-9999px';
-                        
-                        if (successful) {{
-                            showCopySuccess();
-                        }} else {{
-                            showCopyInstructions();
-                        }}
-                    }} catch (err) {{
-                        console.error("Fallback method error:", err);
-                        showCopyInstructions();
-                    }}
-                }}
-                
-                // Hiển thị thông báo thành công
-                function showCopySuccess() {{
-                    const message = document.getElementById('copySuccessMessage');
-                    const instructions = document.getElementById('copyInstructions');
-                    
-                    // Ẩn instructions nếu đang hiển thị
-                    instructions.style.display = 'none';
-                    
-                    // Hiện thông báo thành công
-                    message.style.display = 'block';
-                    
-                    // Ẩn sau 3 giây
-                    setTimeout(() => {{
-                        message.style.display = 'none';
-                    }}, 3000);
-                }}
-                
-                // Hiển thị hướng dẫn sao chép thủ công
-                function showCopyInstructions() {{
-                    const message = document.getElementById('copySuccessMessage');
-                    const instructions = document.getElementById('copyInstructions');
-                    
-                    // Ẩn success nếu đang hiển thị
-                    message.style.display = 'none';
-                    
-                    // Hiện hướng dẫn
-                    instructions.style.display = 'block';
-                    
-                    // Làm cho textarea chính hiển thị và chọn nội dung
-                    const textarea = document.getElementById('contentToCopy');
-                    textarea.style.position = 'relative';
-                    textarea.style.left = '0';
-                    textarea.style.width = '100%';
-                    textarea.style.height = '150px';
-                    textarea.style.opacity = '1';
-                    textarea.style.margin = '15px 0';
-                    textarea.style.padding = '10px';
-                    textarea.style.borderRadius = '5px';
-                    textarea.style.border = '2px solid #ffc107';
-                    
-                    textarea.focus();
-                    textarea.select();
-                }}
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
+            // Hiển thị hướng dẫn
+            alert('Nội dung đã được chọn. Nhấn Ctrl+C (hoặc Cmd+C) để sao chép.');
+        }
+        </script>
+        """, unsafe_allow_html=True)
         
         # Display the content in a text area - height based on preferences
         col1, col2 = st.columns([4, 1])
@@ -2086,19 +1937,15 @@ if st.session_state.content and len(st.session_state.content) > 100:
         
         with col2:
             st.markdown("<br><br>", unsafe_allow_html=True)
-            # Nút sao chép này sẽ là backup, vì chúng ta đã có nút lớn ở trên
+            # Nút sao chép đơn giản bên cạnh - sẽ hiện hướng dẫn
             if st.button("📋 Sao chép", use_container_width=True):
-                st.success("Đã sao chép nội dung!")
+                st.info("Hãy sử dụng nút SAO CHÉP NỘI DUNG phía trên để sao chép nội dung vào clipboard.")
                 
-                # Sử dụng JavaScript đơn giản để gọi hàm chính đã được định nghĩa
+                # Thêm JavaScript đơn giản để focus vào nút sao chép chính
                 js = """
                 <script>
-                    // Gọi hàm sao chép chính đã định nghĩa ở trên
-                    if (typeof copyToClipboardMobile === 'function') {
-                        copyToClipboardMobile();
-                    } else {
-                        alert('Vui lòng sử dụng nút sao chép chính phía trên');
-                    }
+                    // Focus vào nút sao chép chính
+                    document.querySelector('.simple-copy-button').scrollIntoView();
                 </script>
                 """
                 st.components.v1.html(js, height=0)
