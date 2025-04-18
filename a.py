@@ -2,12 +2,6 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
-try:
-    import pyperclip
-    has_pyperclip = True
-except ImportError:
-    has_pyperclip = False
-    print("pyperclip module not found. Copy to clipboard functionality may be limited.")
 import time
 from urllib.parse import urlparse
 import logging
@@ -1595,6 +1589,32 @@ if 'preferences' not in st.session_state:
 custom_css = generate_custom_css(st.session_state.preferences)
 st.markdown(custom_css, unsafe_allow_html=True)
 
+# Add custom CSS for copy button
+st.markdown("""
+<style>
+.copy-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px 0;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    width: 100%;
+    max-width: 300px;
+}
+.copy-msg {
+    color: #4CAF50;
+    font-weight: bold;
+    margin-top: 5px;
+    display: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state for annotations
 if 'current_annotation' not in st.session_state:
     st.session_state.current_annotation = None
@@ -1844,118 +1864,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # Add enhanced mobile-friendly copy functionality with JavaScript
-        st.markdown(f"""
-        <style>
-        /* Simple copy button styles */
-        .simple-copy-area {{
-            position: absolute;
-            left: -9999px;
-            readonly: true;
-        }}
-        
-        .simple-copy-button {{
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px 0;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            width: 100%;
-            max-width: 300px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }}
-        
-        /* Success toast notification */
-        .copy-toast {{
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 10000;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }}
-        </style>
-        
-        <textarea id="copyContent" class="simple-copy-area"></textarea>
-        <div id="copyToast" class="copy-toast">✅ Đã sao chép!</div>
-        
-        <button id="copyButton" class="simple-copy-button">
-            📋 SAO CHÉP NỘI DUNG
-        </button>
-        
-        <script>
-        // Wait for the DOM to be fully loaded
-        document.addEventListener('DOMContentLoaded', function() {{
-            // Setup copy functionality after a short delay
-            setTimeout(function() {{
-                // Get the content to copy
-                const content = {json.dumps(st.session_state.content)};
-                
-                // Setup the button click handler
-                const copyButton = document.getElementById('copyButton');
-                if (copyButton) {{
-                    copyButton.addEventListener('click', function() {{
-                        // Get the textarea
-                        const copyArea = document.getElementById('copyContent');
-                        if (copyArea) {{
-                            // Set the content
-                            copyArea.value = content;
-                            copyArea.style.display = 'block';
-                            copyArea.select();
-                            
-                            try {{
-                                // Try the standard copy command
-                                document.execCommand('copy');
-                                showToast();
-                            }} catch (err) {{
-                                console.error('execCommand copy failed', err);
-                                
-                                // Fallback to clipboard API
-                                if (navigator.clipboard) {{
-                                    navigator.clipboard.writeText(content)
-                                        .then(function() {{
-                                            showToast();
-                                        }})
-                                        .catch(function(err) {{
-                                            console.error('Clipboard API failed', err);
-                                            alert('Không thể sao chép nội dung. Hãy thử lại.');
-                                        }});
-                                }}
-                            }}
-                            
-                            // Hide the textarea again
-                            copyArea.style.display = 'none';
-                        }}
-                    }});
-                }}
-            }}, 1000);
-        }});
-        
-        function showToast() {{
-            const toast = document.getElementById('copyToast');
-            if (toast) {{
-                toast.style.opacity = '1';
-                setTimeout(function() {{
-                    toast.style.opacity = '0';
-                }}, 2000);
-            }}
-        }}
-        </script>
-        """, unsafe_allow_html=True)
-        
-        # Display the content in a text area
+        # FIRST: Display the content in a text area (without any buttons or HTML)
         content_text_area = st.text_area(
             label="Nội dung",
             value=st.session_state.content,
@@ -1963,6 +1872,44 @@ if st.session_state.content and len(st.session_state.content) > 100:
             label_visibility="collapsed",
             key=f"content_{hash(st.session_state.content)}"
         )
+        
+        # SECOND: Add the copy button with JavaScript separately
+        js_content = st.session_state.content.replace("`", "\\`").replace("\\", "\\\\").replace("\n", "\\n")
+        
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-top: 10px;">
+            <button onclick="copyContent()" class="copy-btn">📋 SAO CHÉP NỘI DUNG</button>
+            <span id="copyMsg" class="copy-msg" style="margin-left: 10px;">✅ Đã sao chép nội dung!</span>
+        </div>
+        
+        <script>
+        function copyContent() {{
+            // Create temporary textarea element
+            const textarea = document.createElement('textarea');
+            textarea.value = `{js_content}`;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'absolute';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            
+            // Select and copy
+            textarea.select();
+            document.execCommand('copy');
+            
+            // Remove temporary element
+            document.body.removeChild(textarea);
+            
+            // Show success message
+            const msg = document.getElementById('copyMsg');
+            msg.style.display = 'inline';
+            
+            // Hide after 2 seconds
+            setTimeout(function() {{
+                msg.style.display = 'none';
+            }}, 2000);
+        }}
+        </script>
+        """, unsafe_allow_html=True)
         
         # Add a "Download as Text" button for mobile users
         col1, col2 = st.columns(2)
