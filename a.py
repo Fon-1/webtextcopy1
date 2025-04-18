@@ -1918,7 +1918,7 @@ if st.session_state.content and len(st.session_state.content) > 100:
                     st.warning("👉 Hãy dùng nút bên phải để sao chép trên thiết bị di động.")
 
         with col2:
-            # JavaScript-based copy solution optimized for mobile
+            # Simple, reliable copy mechanism for all mobile devices
             st.markdown(
                 f"""
                 <style>
@@ -1931,201 +1931,115 @@ if st.session_state.content and len(st.session_state.content) > 100:
                     text-decoration: none;
                     display: block;
                     font-size: 18px;
-                    font-weight: bold;
-                    margin: 0 auto;
+                    margin: 10px 0;
                     cursor: pointer;
                     border-radius: 8px;
                     width: 100%;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                    transition: all 0.3s;
-                }}
-                .mobile-copy-btn:active {{
-                    background-color: #3e8e41;
-                    transform: translateY(2px);
-                }}
-                .copy-msg-mobile {{
-                    color: #4CAF50;
-                    margin-top: 10px;
-                    display: none;
-                    text-align: center;
                     font-weight: bold;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
                 }}
-                #hidden-copy-area {{
-                    position: absolute;
-                    left: -9999px;
-                    top: -9999px;
-                    width: 1px;
-                    height: 1px;
-                    opacity: 0;
-                }}
-                #visible-copy-area {{
-                    display: none;
-                    width: 100%;
-                    height: 150px;
-                    border: 2px solid #4CAF50;
-                    padding: 10px;
+                .copy-success {{
+                    color: #4CAF50;
+                    text-align: center;
                     margin: 10px 0;
-                    background-color: #f9f9f9;
-                }}
-                .copy-instructions {{
-                    display: none;
-                    background-color: #fff3cd;
-                    color: #856404;
                     padding: 10px;
-                    margin: 10px 0;
-                    border-left: 4px solid #ffeeba;
+                    font-weight: bold;
+                    display: none;
+                    background-color: #f0fff0;
                     border-radius: 4px;
+                    border-left: 4px solid #4CAF50;
                 }}
                 </style>
                 
-                <button id="mobileCopyBtn" class="mobile-copy-btn">📋 SAO CHÉP CHO THIẾT BỊ DI ĐỘNG</button>
-                <div id="copyMsgMobile" class="copy-msg-mobile">✅ Đã sao chép nội dung!</div>
-                <textarea id="hidden-copy-area" readonly></textarea>
-                <textarea id="visible-copy-area" readonly></textarea>
-                <div id="copyInstructions" class="copy-instructions">
-                    <p><strong>Để sao chép nội dung:</strong></p>
-                    <ol>
-                        <li>Nhấn và giữ trong vùng văn bản trên</li>
-                        <li>Chọn "Chọn tất cả" hoặc "Select All"</li>
-                        <li>Chọn "Sao chép" hoặc "Copy"</li>
-                    </ol>
-                    <p>Sau khi sao chép, nhấn lại nút xanh để ẩn đi.</p>
-                </div>
+                <button id="mobileDirectCopyBtn" class="mobile-copy-btn">📋 NHẤN ĐỂ SAO CHÉP</button>
+                <div id="copySuccess" class="copy-success">✅ Đã sao chép thành công!</div>
                 
                 <script>
-                // Initialize on page load
-                document.addEventListener('DOMContentLoaded', function() {{
-                    // Elements
-                    const copyBtn = document.getElementById('mobileCopyBtn');
-                    const copyMsg = document.getElementById('copyMsgMobile');
-                    const hiddenArea = document.getElementById('hidden-copy-area');
-                    const visibleArea = document.getElementById('visible-copy-area');
-                    const copyInstructions = document.getElementById('copyInstructions');
+                document.getElementById('mobileDirectCopyBtn').addEventListener('click', function() {{
+                    // The exact content to copy without any processing
+                    var textToCopy = {json.dumps(st.session_state.content)};
                     
-                    // Is this a Samsung device?
-                    const isSamsung = /Samsung|SM-G|SM-N|SM-A|SM-T/.test(navigator.userAgent);
-                    
-                    // Is this any Android device?
-                    const isAndroid = /Android/.test(navigator.userAgent);
-                    
-                    // Set content in both areas
-                    const content = {json.dumps(st.session_state.content)};
-                    if (hiddenArea) hiddenArea.value = content;
-                    if (visibleArea) visibleArea.value = content;
-                    
-                    let visibleMode = false;
-                    
-                    // Add click event
-                    if (copyBtn) {{
-                        copyBtn.addEventListener('click', function() {{
-                            // Visual feedback
-                            copyBtn.style.backgroundColor = '#3e8e41';
-                            setTimeout(() => {{ copyBtn.style.backgroundColor = '#4CAF50'; }}, 200);
-                            
-                            // If Samsung or visible mode is already active, toggle visible mode
-                            if (isSamsung || visibleMode) {{
-                                visibleMode = !visibleMode;
-                                
-                                if (visibleMode) {{
-                                    // Show visible area and instructions
-                                    visibleArea.style.display = 'block';
-                                    copyInstructions.style.display = 'block';
-                                    copyBtn.innerText = '❌ ẨN VÙNG VĂN BẢN';
-                                    copyBtn.style.backgroundColor = '#f44336';
-                                }} else {{
-                                    // Hide visible area and instructions
-                                    visibleArea.style.display = 'none';
-                                    copyInstructions.style.display = 'none'; 
-                                    copyBtn.innerText = '📋 SAO CHÉP CHO THIẾT BỊ DI ĐỘNG';
-                                    copyBtn.style.backgroundColor = '#4CAF50';
-                                }}
-                                
-                                // If toggling back to hidden, don't try to copy
-                                if (!visibleMode) return;
-                            }}
-                            
-                            // Only try automatic copy if not showing the visible area
-                            if (!visibleMode) {{
-                                tryCopy(content);
-                            }}
-                        }});
-                    }}
-                    
-                    function tryCopy(text) {{
-                        // For Samsung devices, we'll skip directly to visible mode on next click
-                        if (isSamsung) {{
-                            visibleMode = true;
-                            visibleArea.style.display = 'block';
-                            copyInstructions.style.display = 'block';
-                            copyBtn.innerText = '❌ ẨN VÙNG VĂN BẢN';
-                            copyBtn.style.backgroundColor = '#f44336';
-                            return;
-                        }}
-                        
-                        // Try clipboard API first for non-Samsung Android
-                        if (navigator.clipboard && navigator.clipboard.writeText) {{
-                            navigator.clipboard.writeText(text)
-                                .then(() => {{
-                                    showSuccess();
-                                }})
-                                .catch(err => {{
-                                    console.error('Clipboard API failed:', err);
-                                    fallbackCopy(text);
-                                }});
-                        }} else {{
-                            fallbackCopy(text);
-                        }}
-                    }}
-                    
-                    function fallbackCopy(text) {{
-                        try {{
-                            // Try to use execCommand with the hidden area
-                            hiddenArea.style.position = 'fixed';
-                            hiddenArea.style.top = '0';
-                            hiddenArea.style.left = '0';
-                            hiddenArea.style.width = '100%';
-                            hiddenArea.style.height = '100%';
-                            hiddenArea.style.opacity = '1';
-                            hiddenArea.style.zIndex = '999999';
-                            
-                            hiddenArea.focus();
-                            hiddenArea.select();
-                            
-                            const success = document.execCommand('copy');
-                            
-                            // Hide it again
-                            hiddenArea.style.position = 'absolute';
-                            hiddenArea.style.top = '-9999px';
-                            hiddenArea.style.left = '-9999px';
-                            hiddenArea.style.width = '1px';
-                            hiddenArea.style.height = '1px';
-                            hiddenArea.style.opacity = '0';
-                            
-                            if (success) {{
+                    // First try: Modern Clipboard API
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(textToCopy)
+                            .then(function() {{
                                 showSuccess();
-                            }} else {{
-                                // If still not successful, switch to visible mode
-                                visibleMode = true;
-                                visibleArea.style.display = 'block';
-                                copyInstructions.style.display = 'block';
-                                copyBtn.innerText = '❌ ẨN VÙNG VĂN BẢN';
-                                copyBtn.style.backgroundColor = '#f44336';
-                            }}
-                        }} catch (e) {{
-                            console.error('Copy failed:', e);
-                            // Fall back to visible mode
-                            visibleMode = true;
-                            visibleArea.style.display = 'block';
-                            copyInstructions.style.display = 'block';
-                            copyBtn.innerText = '❌ ẨN VÙNG VĂN BẢN';
-                            copyBtn.style.backgroundColor = '#f44336';
-                        }}
+                            }})
+                            .catch(function(err) {{
+                                console.error('Clipboard API failed:', err);
+                                fallbackCopy();
+                            }});
+                    }} else {{
+                        fallbackCopy();
+                    }}
+                    
+                    function fallbackCopy() {{
+                        // Create a temporary textarea for Samsung devices
+                        var tempTextArea = document.createElement('textarea');
+                        tempTextArea.value = textToCopy;
+                        
+                        // Make it visible on Samsung devices
+                        tempTextArea.style.position = 'fixed';
+                        tempTextArea.style.left = '0';
+                        tempTextArea.style.top = '0';
+                        tempTextArea.style.width = '100%';
+                        tempTextArea.style.height = '40%';
+                        tempTextArea.style.padding = '20px';
+                        tempTextArea.style.zIndex = '9999';
+                        tempTextArea.style.backgroundColor = 'white';
+                        tempTextArea.style.color = 'black';
+                        tempTextArea.style.fontSize = '16px';
+                        tempTextArea.style.border = '2px solid #4CAF50';
+                        
+                        document.body.appendChild(tempTextArea);
+                        
+                        // Add instructions
+                        var instructionDiv = document.createElement('div');
+                        instructionDiv.innerHTML = '<strong>Nhấn giữ và chọn tất cả văn bản, sau đó sao chép</strong>';
+                        instructionDiv.style.position = 'fixed';
+                        instructionDiv.style.left = '0';
+                        instructionDiv.style.top = '40%';
+                        instructionDiv.style.width = '100%';
+                        instructionDiv.style.padding = '10px';
+                        instructionDiv.style.backgroundColor = '#fff3cd';
+                        instructionDiv.style.color = '#856404';
+                        instructionDiv.style.textAlign = 'center';
+                        instructionDiv.style.zIndex = '10000';
+                        
+                        document.body.appendChild(instructionDiv);
+                        
+                        // Select the text
+                        tempTextArea.focus();
+                        tempTextArea.select();
+                        
+                        // Add a close button
+                        var closeButton = document.createElement('button');
+                        closeButton.textContent = 'ĐÓNG';
+                        closeButton.style.position = 'fixed';
+                        closeButton.style.right = '10px';
+                        closeButton.style.top = '10px';
+                        closeButton.style.padding = '10px 20px';
+                        closeButton.style.backgroundColor = '#dc3545';
+                        closeButton.style.color = 'white';
+                        closeButton.style.border = 'none';
+                        closeButton.style.borderRadius = '4px';
+                        closeButton.style.zIndex = '10001';
+                        
+                        closeButton.addEventListener('click', function() {{
+                            document.body.removeChild(tempTextArea);
+                            document.body.removeChild(instructionDiv);
+                            document.body.removeChild(closeButton);
+                            showSuccess();
+                        }});
+                        
+                        document.body.appendChild(closeButton);
                     }}
                     
                     function showSuccess() {{
-                        copyMsg.style.display = 'block';
-                        setTimeout(() => {{
-                            copyMsg.style.display = 'none';
+                        var successMsg = document.getElementById('copySuccess');
+                        successMsg.style.display = 'block';
+                        setTimeout(function() {{
+                            successMsg.style.display = 'none';
                         }}, 2000);
                     }}
                 }});
