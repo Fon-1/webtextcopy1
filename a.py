@@ -10,6 +10,7 @@ from pathlib import Path
 import uuid
 import datetime
 import urllib3
+import pyperclip  # Import pyperclip for copy functionality
 
 # Import helper functions
 try:
@@ -1592,25 +1593,61 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # Add custom CSS for copy button
 st.markdown("""
 <style>
+.stTabs [data-baseweb="tab-panel"] {
+    padding-top: 0px;
+}
+
+/* Copy button styling */
 .copy-btn {
     background-color: #4CAF50;
-    color: white;
-    padding: 12px 20px;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin: 10px 0;
+    color: white;
+    padding: 12px 16px; /* Increased padding for better touch targets */
     font-size: 16px;
-    font-weight: bold;
-    text-align: center;
-    width: 100%;
-    max-width: 300px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    min-width: 160px; /* Ensure button is wide enough for touch */
+    touch-action: manipulation; /* Optimize for touch */
 }
+
+.copy-btn:hover {
+    background-color: #45a049;
+}
+
+.copy-btn:active {
+    background-color: #3e8e41;
+}
+
 .copy-msg {
+    display: none;
     color: #4CAF50;
     font-weight: bold;
-    margin-top: 5px;
-    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Mobile-specific styles */
+    .copy-btn {
+        padding: 14px 20px; /* Even larger touch target for mobile */
+        width: 100%; /* Full width on small screens */
+        margin-bottom: 10px;
+    }
+    
+    /* Stack elements vertically on mobile */
+    .copy-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .copy-msg {
+        margin-top: 8px;
+        text-align: center;
+        font-size: 14px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1864,52 +1901,17 @@ if st.session_state.content and len(st.session_state.content) > 100:
         # Get current annotations for this URL
         annotations = get_annotations(st.session_state.current_url)
         
-        # FIRST: Display the content in a text area (without any buttons or HTML)
-        content_text_area = st.text_area(
-            label="Nội dung",
-            value=st.session_state.content,
-            height=int(st.session_state.preferences.get("font_size", "16px").replace("px", "")) * 25,
-            label_visibility="collapsed",
-            key=f"content_{hash(st.session_state.content)}"
-        )
+        # Display the content in a text area for copy
+        st.text_area("", st.session_state.content, height=400, key=f"content_{hash(st.session_state.content)}")
         
-        # SECOND: Add the copy button with JavaScript separately
-        js_content = st.session_state.content.replace("`", "\\`").replace("\\", "\\\\").replace("\n", "\\n")
-        
-        st.markdown(f"""
-        <div style="display: flex; align-items: center; margin-top: 10px;">
-            <button onclick="copyContent()" class="copy-btn">📋 SAO CHÉP NỘI DUNG</button>
-            <span id="copyMsg" class="copy-msg" style="margin-left: 10px;">✅ Đã sao chép nội dung!</span>
-        </div>
-        
-        <script>
-        function copyContent() {{
-            // Create temporary textarea element
-            const textarea = document.createElement('textarea');
-            textarea.value = `{js_content}`;
-            textarea.setAttribute('readonly', '');
-            textarea.style.position = 'absolute';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            
-            // Select and copy
-            textarea.select();
-            document.execCommand('copy');
-            
-            // Remove temporary element
-            document.body.removeChild(textarea);
-            
-            // Show success message
-            const msg = document.getElementById('copyMsg');
-            msg.style.display = 'inline';
-            
-            // Hide after 2 seconds
-            setTimeout(function() {{
-                msg.style.display = 'none';
-            }}, 2000);
-        }}
-        </script>
-        """, unsafe_allow_html=True)
+        # Use a simple copy button with pyperclip instead of JavaScript
+        if st.button("📋 SAO CHÉP NỘI DUNG", key="copy_button"):
+            try:
+                # Use pyperclip for copying (works on most platforms)
+                pyperclip.copy(st.session_state.content)
+                st.success("✅ Đã sao chép nội dung!")
+            except Exception as e:
+                st.warning(f"Không thể sao chép. Hãy thử chọn văn bản và sao chép thủ công (Ctrl+C/Cmd+C).")
         
         # Add a "Download as Text" button for mobile users
         col1, col2 = st.columns(2)
